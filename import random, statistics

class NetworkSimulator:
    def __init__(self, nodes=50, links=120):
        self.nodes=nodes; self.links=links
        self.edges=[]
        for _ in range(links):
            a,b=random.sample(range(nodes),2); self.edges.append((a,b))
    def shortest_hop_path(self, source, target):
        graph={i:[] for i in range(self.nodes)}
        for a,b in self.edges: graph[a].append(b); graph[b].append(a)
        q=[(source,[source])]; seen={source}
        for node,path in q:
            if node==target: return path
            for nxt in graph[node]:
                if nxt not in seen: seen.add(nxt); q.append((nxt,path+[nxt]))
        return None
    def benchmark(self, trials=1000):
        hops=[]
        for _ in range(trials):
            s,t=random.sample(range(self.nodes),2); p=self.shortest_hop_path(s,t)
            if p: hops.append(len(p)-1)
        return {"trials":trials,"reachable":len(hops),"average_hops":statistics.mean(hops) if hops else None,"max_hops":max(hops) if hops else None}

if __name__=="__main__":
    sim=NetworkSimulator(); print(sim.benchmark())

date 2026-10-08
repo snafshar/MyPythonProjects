@@ -1,0 +1,26 @@
+import random, statistics
+
+class NetworkSimulator:
+    def __init__(self, nodes=50, links=120):
+        self.nodes=nodes; self.links=links
+        self.edges=[]
+        for _ in range(links):
+            a,b=random.sample(range(nodes),2); self.edges.append((a,b))
+    def shortest_hop_path(self, source, target):
+        graph={i:[] for i in range(self.nodes)}
+        for a,b in self.edges: graph[a].append(b); graph[b].append(a)
+        q=[(source,[source])]; seen={source}
+        for node,path in q:
+            if node==target: return path
+            for nxt in graph[node]:
+                if nxt not in seen: seen.add(nxt); q.append((nxt,path+[nxt]))
+        return None
+    def benchmark(self, trials=1000):
+        hops=[]
+        for _ in range(trials):
+            s,t=random.sample(range(self.nodes),2); p=self.shortest_hop_path(s,t)
+            if p: hops.append(len(p)-1)
+        return {"trials":trials,"reachable":len(hops),"average_hops":statistics.mean(hops) if hops else None,"max_hops":max(hops) if hops else None}
+
+if __name__=="__main__":
+    sim=NetworkSimulator(); print(sim.benchmark())
