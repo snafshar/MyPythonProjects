@@ -1,16 +1,37 @@
-"""I implemented breadth-first shortest-path reconstruction."""
+"""Breadth-first shortest-path reconstruction with validation and distance."""
+
 from collections import deque
 
+
 def shortest_path(graph, source, target):
-    queue, parent = deque([source]), {source: None}
+    if source not in graph or target not in graph:
+        return []
+    queue = deque([source])
+    parent = {source: None}
     while queue:
         node = queue.popleft()
-        if node == target: break
+        if node == target:
+            break
         for neighbour in graph.get(node, []):
-            if neighbour not in parent: parent[neighbour] = node; queue.append(neighbour)
-    if target not in parent: return []
-    path=[]
-    while target is not None: path.append(target); target=parent[target]
+            if neighbour not in parent:
+                parent[neighbour] = node
+                queue.append(neighbour)
+    if target not in parent:
+        return []
+    path, node = [], target
+    while node is not None:
+        path.append(node)
+        node = parent[node]
     return path[::-1]
 
-if __name__ == '__main__': print(shortest_path({'A':['B'],'B':['C'],'C':[]}, 'A', 'C'))
+
+def shortest_distance(graph, source, target):
+    path = shortest_path(graph, source, target)
+    return len(path) - 1 if path else None
+
+
+if __name__ == "__main__":
+    graph = {"A": ["B", "D"], "B": ["A", "C"], "C": ["B"], "D": ["A"]}
+    path = shortest_path(graph, "A", "C")
+    print("Path:", " -> ".join(path))
+    print("Hops:", shortest_distance(graph, "A", "C"))
