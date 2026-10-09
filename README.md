@@ -1,10 +1,19 @@
 # Python Projects
 
-I use this repository to develop practical Python projects around concurrency, algorithms, and data processing.
+Practical Python exercises covering algorithms, concurrency, simulation, and networking.
 
 ## Projects
 
-- `task-pipeline.py` — bounded worker pipeline with back-pressure
-- `graph-bfs.py` — shortest paths over adjacency lists
+- `network_simulator.py` — reproducible graph topology, BFS routing, and network metrics
+- `projects/graph-bfs.py` — shortest-path reconstruction and hop distance
+- `projects/task-pipeline.py` — bounded multi-worker pipeline with clean shutdown
 
-I keep the implementations small, testable, and dependency-light.
+The projects are dependency-light and designed to be readable, reproducible, and easy to extend.
+
+## Run
+
+```bash
+python3 network_simulator.py
+python3 projects/graph-bfs.py
+python3 projects/task-pipeline.py
+```
