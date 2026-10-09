@@ -19,3 +19,9 @@ python3 network_tools/network_health.py
 python3 projects/graph-bfs.py
 python3 projects/task-pipeline.py
 ```
+
+
+## Latest revision
+
+- Expanded the networking track with reusable address, DNS, CIDR, latency, throughput, and packet-loss utilities.
+- Added focused tests and kept examples dependency-light for Python 3.
