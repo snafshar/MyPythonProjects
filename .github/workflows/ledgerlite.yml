@@ -1,0 +1,23 @@
+name: LedgerLite checks
+
+on:
+  push:
+    paths:
+      - "python_practice/2026-10-15/ledgerlite/**"
+      - ".github/workflows/ledgerlite.yml"
+  pull_request:
+    paths:
+      - "python_practice/2026-10-15/ledgerlite/**"
+      - ".github/workflows/ledgerlite.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run unit tests
+        working-directory: python_practice/2026-10-15/ledgerlite
+        run: python -m unittest -v
