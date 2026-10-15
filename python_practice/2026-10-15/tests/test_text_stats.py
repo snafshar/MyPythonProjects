@@ -1,6 +1,6 @@
 import unittest
 
-from python_practice_2026_10_15_text_stats import analyze
+from text_stats import analyze
 
 
 class TextStatsTests(unittest.TestCase):
