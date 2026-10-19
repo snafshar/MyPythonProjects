@@ -27,6 +27,21 @@ def binary_search(values, target):
     return -1
 
 
+def two_sum(values, target):
+    """Return indices of two distinct items whose sum is target, else None.
+
+    The first valid pair found is returned. Expected time is O(n) with a
+    hash table, at the cost of O(n) additional space.
+    """
+    earlier_indices = {}
+    for index, value in enumerate(values):
+        complement = target - value
+        if complement in earlier_indices:
+            return earlier_indices[complement], index
+        earlier_indices[value] = index
+    return None
+
+
 def frequencies(items):
     """Return a dictionary mapping each hashable item to its occurrence count."""
     counts = {}
@@ -56,5 +71,6 @@ if __name__ == "__main__":
     sample = [1, 3, 5, 7, 9]
     print("linear_search:", linear_search(sample, 5))
     print("binary_search:", binary_search(sample, 5))
+    print("two_sum:", two_sum([2, 7, 11, 15], 9))
     print("frequencies:", frequencies("banana"))
     print("balanced:", brackets_are_balanced("call([x], {y: 2})"))
