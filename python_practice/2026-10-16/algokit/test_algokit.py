@@ -5,6 +5,7 @@ from algokit import (
     brackets_are_balanced,
     frequencies,
     linear_search,
+    two_sum,
 )
 
 
@@ -19,6 +20,12 @@ class AlgoKitTests(unittest.TestCase):
         self.assertEqual(binary_search([1, 3, 5, 7], 4), -1)
         self.assertEqual(binary_search([], 1), -1)
         self.assertIn(binary_search([2, 2, 2], 2), [0, 1, 2])
+
+    def test_two_sum(self):
+        self.assertEqual(two_sum([2, 7, 11, 15], 9), (0, 1))
+        self.assertEqual(two_sum([3, 3], 6), (0, 1))
+        self.assertIsNone(two_sum([1, 2, 3], 7))
+        self.assertIsNone(two_sum([5], 10))
 
     def test_frequencies(self):
         self.assertEqual(frequencies("banana"), {"b": 1, "a": 3, "n": 2})
