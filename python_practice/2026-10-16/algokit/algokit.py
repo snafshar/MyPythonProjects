@@ -1,8 +1,20 @@
 """Small, dependency-free algorithms for practice."""
 
 
+def linear_search(values, target):
+    """Return the first index of target, or -1 if it is absent."""
+    for index, value in enumerate(values):
+        if value == target:
+            return index
+    return -1
+
+
 def binary_search(values, target):
-    """Return the index of target in sorted values, or -1 if absent."""
+    """Return an index of target in ascending sorted values, or -1 if absent.
+
+    The input must be sorted in ascending order. If duplicates exist, any
+    matching index may be returned.
+    """
     left, right = 0, len(values) - 1
     while left <= right:
         middle = (left + right) // 2
@@ -16,7 +28,7 @@ def binary_search(values, target):
 
 
 def frequencies(items):
-    """Return a dictionary mapping each item to its occurrence count."""
+    """Return a dictionary mapping each hashable item to its occurrence count."""
     counts = {}
     for item in items:
         counts[item] = counts.get(item, 0) + 1
@@ -24,7 +36,10 @@ def frequencies(items):
 
 
 def brackets_are_balanced(text):
-    """Check (), [], and {} nesting while ignoring other characters."""
+    """Check bracket nesting for (), [], and {}; ignore other characters.
+
+    This educational checker does not parse string literals or comments.
+    """
     pairs = {")": "(", "]": "[", "}": "{"}
     opening = set(pairs.values())
     stack = []
@@ -38,6 +53,8 @@ def brackets_are_balanced(text):
 
 
 if __name__ == "__main__":
-    print("binary_search:", binary_search([1, 3, 5, 7], 5))
+    sample = [1, 3, 5, 7, 9]
+    print("linear_search:", linear_search(sample, 5))
+    print("binary_search:", binary_search(sample, 5))
     print("frequencies:", frequencies("banana"))
     print("balanced:", brackets_are_balanced("call([x], {y: 2})"))
