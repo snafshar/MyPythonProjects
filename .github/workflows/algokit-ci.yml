@@ -1,0 +1,36 @@
+name: AlgoKit CI
+
+on:
+  push:
+    paths:
+      - "python_practice/2026-10-16/algokit/**"
+      - ".github/workflows/algokit-ci.yml"
+  pull_request:
+    paths:
+      - "python_practice/2026-10-16/algokit/**"
+      - ".github/workflows/algokit-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run unit and randomized regression tests
+        working-directory: python_practice/2026-10-16/algokit
+        run: python -m unittest discover -v
+      - name: Smoke-test benchmark
+        working-directory: python_practice/2026-10-16/algokit
+        run: python benchmark_search.py --sizes 1000 5000 --repeats 3
