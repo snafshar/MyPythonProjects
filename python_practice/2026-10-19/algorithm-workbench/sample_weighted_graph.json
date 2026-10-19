@@ -1,0 +1,19 @@
+{
+  "description": "Small undirected weighted graph for shortest-path exercises",
+  "nodes": ["A", "B", "C", "D", "E"],
+  "edges": [
+    ["A", "B", 4],
+    ["A", "C", 1],
+    ["C", "B", 2],
+    ["B", "D", 1],
+    ["C", "D", 5],
+    ["D", "E", 3]
+  ],
+  "expected_shortest_distance_from_A": {
+    "A": 0,
+    "B": 3,
+    "C": 1,
+    "D": 4,
+    "E": 7
+  }
+}
