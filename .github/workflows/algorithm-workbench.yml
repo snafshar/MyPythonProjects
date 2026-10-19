@@ -1,0 +1,34 @@
+name: Algorithm Workbench CI
+
+on:
+  push:
+    paths:
+      - "python_practice/2026-10-19/algorithm-workbench/**"
+      - ".github/workflows/algorithm-workbench.yml"
+  pull_request:
+    paths:
+      - "python_practice/2026-10-19/algorithm-workbench/**"
+      - ".github/workflows/algorithm-workbench.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run tests
+        working-directory: python_practice/2026-10-19/algorithm-workbench
+        run: python -m unittest discover -v
+      - name: Smoke-test benchmark
+        working-directory: python_practice/2026-10-19/algorithm-workbench
+        run: python benchmark_sorting.py --sizes 100 500 --repeats 1
