@@ -4,6 +4,36 @@ import json
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parent
+DEFAULT_PORT = 8500
+DEFAULT_TLS_PORT = 8501
+
+
+def valid_port(value):
+    if isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 65535:
+        return value
+    if isinstance(value, str) and value.isascii() and value.isdecimal():
+        return valid_port(int(value))
+    raise ValueError(f"Port must be an integer between 1 and 65535: {value!r}")
+
+
+def gateway_port(path):
+    """Read the gateway's loopback binding from the workspace's Compose file."""
+    try:
+        ports = json.loads(path.read_text(encoding="utf-8"))["services"]["gateway"]["ports"]
+        if not isinstance(ports, list) or len(ports) != 1:
+            raise ValueError
+        mapping = ports[0]
+        if isinstance(mapping, str):
+            host, published, target = mapping.removesuffix("/tcp").split(":")
+        else:
+            host, published, target = mapping["host_ip"], mapping["published"], mapping["target"]
+            if mapping.get("protocol", "tcp") != "tcp":
+                raise ValueError
+        if host != "127.0.0.1" or str(target) != "5000":
+            raise ValueError
+        return valid_port(published)
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"{path.name} needs one gateway binding like 127.0.0.1:8500:5000.") from error
 
 REQUIREMENTS = """Flask>=3.1,<4
 requests>=2.32,<3
@@ -190,7 +220,11 @@ def postman_collection(port):
             "variable": [{"key": "baseUrl", "value": f"http://127.0.0.1:{port}"}], "item": items}
 
 
-def generate(root, port=8500):
+def generate(root, port=DEFAULT_PORT, tls_port=None):
+    port = valid_port(port)
+    tls_port = valid_port(port + 1 if tls_port is None else tls_port)
+    if port == tls_port:
+        raise ValueError("HTTP and HTTPS need different host ports.")
     files = {
         "app.py": (SOURCE / "demo.py").read_text(encoding="utf-8"),
         "requirements.txt": REQUIREMENTS,
@@ -198,7 +232,7 @@ def generate(root, port=8500):
                                 "pip-audit>=2.7,<3\nopenapi-spec-validator>=0.7,<0.9\n",
         "Dockerfile": DOCKERFILE,
         "compose.json": compose_model(port),
-        "compose.secure.json": compose_model(port + 1, secure=True),
+        "compose.secure.json": compose_model(tls_port, secure=True),
         "openapi.json": api_contract(port),
         "tests/test_service.py": TESTS,
         "tests/gateway.postman_collection.json": postman_collection(port),
@@ -207,17 +241,22 @@ def generate(root, port=8500):
         ".gitignore": ".ase-*\n.venv/\n__pycache__/\n.pytest_cache/\n*.pyc\n.env\n",
         ".dockerignore": ".git\n.ase-*\n.venv\n__pycache__\n.env\n",
         "README.md": "# Generated ASE reference project\n\n"
-                     "Run from this folder. The normal stack publishes only the loopback gateway.\n\n"
+                     f"Run from this folder. The normal gateway listens on http://127.0.0.1:{port}.\n\n"
                      "- Start: `docker compose -f compose.json up -d --build --wait`\n"
                      "- Test: `newman run tests/gateway.postman_collection.json`\n"
                      "- Stop: `docker compose -f compose.json down`\n\n"
                      "The HTTPS/JWT profile is a local teaching demo. Internal calls and MongoDB are local Compose services.\n",
     }
     created, kept = [], []
+    root = root.resolve()
+    for relative in files:
+        dest = root / relative
+        if not dest.resolve().is_relative_to(root) or dest.is_symlink():
+            raise ValueError(f"Cannot scaffold through an external path or symlink: {relative}")
+        if dest.exists() and not dest.is_file():
+            raise ValueError(f"Expected a file at {relative}.")
     for relative, value in files.items():
         dest = root / relative
-        if not dest.resolve().is_relative_to(root.resolve()):
-            raise ValueError(f"Path leaves workspace: {relative}")
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
             with dest.open("x", encoding="utf-8") as handle:
