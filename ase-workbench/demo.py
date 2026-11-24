@@ -16,6 +16,7 @@ app = Flask(__name__)
 ROLE = os.getenv("ROLE", "calc")
 BACKENDS = {"calc": "http://calc:5000", "string": "http://string:5000"}
 WORD = re.compile(r"[A-Za-z0-9]{1,64}")
+BEARER_SCHEME = "Bearer"
 
 
 def read_secret(name):
@@ -112,7 +113,7 @@ def login():
     token = jwt.encode({"sub": user, "iss": "ase-lab", "aud": "ase-gateway", "iat": now,
                         "exp": now + timedelta(minutes=10), "scope": "calc" if user == "math" else "string"},
                        read_secret("jwt"), algorithm="HS256")
-    return jsonify(access_token=token, token_type="Bearer", expires_in=600)
+    return jsonify(access_token=token, token_type=BEARER_SCHEME, expires_in=600)
 
 
 @app.get("/calc/<operation>")
@@ -126,7 +127,7 @@ def gateway(operation):
         return jsonify(error="Unknown operation"), 404
     if os.getenv("SECURE") == "1":
         scheme, _, token = request.headers.get("Authorization", "").partition(" ")
-        if scheme.lower() != "bearer" or not token:
+        if scheme.lower() != BEARER_SCHEME.lower() or not token:
             return jsonify(error="Bearer token required"), 401
         try:
             claims = jwt.decode(token, read_secret("jwt"), algorithms=["HS256"], audience="ase-gateway",
