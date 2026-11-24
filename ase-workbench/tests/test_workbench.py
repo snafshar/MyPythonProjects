@@ -160,6 +160,34 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(candidate.returncode, 1)
         self.assertIn("Review the release stage", candidate.stderr)
 
+    def test_cli_inspection_and_filtered_evidence(self):
+        command = (sys.executable, str(CLI), "--workspace", str(self.path))
+
+        def read(*args):
+            return subprocess.check_output((*command, *args), text=True)
+
+        for args, expected in [
+            (("stages",), "The product vision"),
+            (("checks",), "Run Newman integration tests"),
+            (("stage", "tests"), "Expected output:"),
+            (("plan", "baseline"), "after compose_up"),
+            (("prompts", "vision"), "## Persona"),
+        ]:
+            with self.subTest(args=args):
+                self.assertIn(expected, read(*args))
+        self.workspace.set_note("vision", "A test note.\n")
+        self.assertEqual(read("show-note", "vision"), "A test note.\n")
+        self.assertEqual(json.loads(read("status", "--json"))["vision"], "In progress")
+        with patch.object(self.workspace, "execute", return_value="Output"):
+            for check in ("unit", "bandit", "unit"):
+                self.workspace.run(check)
+        self.assertEqual(read("log", "unit"), "Output\n")
+        self.assertEqual(len(json.loads(read("history", "--check", "unit", "--json"))), 2)
+        self.assertEqual(len(json.loads(read("history", "--limit", "1", "--json"))), 1)
+        readiness = subprocess.run((*command, "readiness"), capture_output=True, text=True)
+        self.assertEqual(readiness.returncode, 1)
+        self.assertIn("The product vision", readiness.stdout)
+
     def test_load_summary_requires_nonzero_requests(self):
         prefix = self.path / "load"
         report = self.path / "load_stats.csv"

@@ -80,3 +80,16 @@ python3 cli.py --workspace ~/ase-lab history
 ```
 
 Once the delivery stage passes review, `candidate` records the local release manifest and evidence. Run `review --help` for the stage identifiers.
+
+### Inspect the workflow and evidence
+
+| Command | Result |
+|---|---|
+| `stages` / `checks` | List valid stage and check identifiers. |
+| `stage tests` | Show the stage's tools, activity, expected output and checks. |
+| `plan baseline` | Preview the checks and their ordering dependencies. |
+| `prompts vision` / `show-note vision` | Print a Markdown template or read a saved note. |
+| `log unit` | Read the latest unit check log. |
+| `history --check unit --limit 5 --json` | Export the latest five matching entries as JSON. |
+| `status --json` | Export stage status keyed by identifier. |
+| `readiness` | List outstanding release requirements. Exits with 1 while any remain. |

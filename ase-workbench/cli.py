@@ -1,14 +1,15 @@
 """Terminal entry point using the same workspaces and checks as the desktop app."""
 
 import argparse
+import json
 import signal
 import sys
 from pathlib import Path
 from threading import Event
 
-from engine import CHECKS, PROFILES, Workspace
+from engine import CHECKS, DEPENDENCIES, PROFILES, Workspace
 from execution import RunCancelled
-from stages import STAGES
+from stages import NOTE_TEMPLATES, STAGES
 
 
 def parse_args(argv=None):
@@ -22,7 +23,8 @@ def parse_args(argv=None):
 
     actions.add_parser("doctor", help="Check tool availability and Docker connectivity")
     actions.add_parser("install", help="Install the workspace Python dependencies")
-    actions.add_parser("status", help="Show the current status of each workflow stage")
+    status = actions.add_parser("status", help="Show workflow stage status")
+    status.add_argument("--json", action="store_true", help="Print machine-readable status")
     actions.add_parser("stop", help="Stop the two Compose stacks")
     run = actions.add_parser("run", help="Run a check profile")
     run.add_argument("profile", choices=PROFILES)
@@ -36,7 +38,23 @@ def parse_args(argv=None):
     review = actions.add_parser("review", help="Mark a stage reviewed using the usual evidence checks")
     review.add_argument("stage", choices=STAGES)
     actions.add_parser("candidate", help="Record a local release candidate")
-    actions.add_parser("history", help="List recorded checks and their log paths")
+    history = actions.add_parser("history", help="List recorded checks and their log paths")
+    history.add_argument("--check", choices=CHECKS)
+    history.add_argument("--limit", type=int, help="Maximum number of matching results")
+    history.add_argument("--json", action="store_true", help="Print machine-readable history")
+    actions.add_parser("stages", help="List stage identifiers and titles")
+    actions.add_parser("checks", help="List check identifiers and labels")
+    stage = actions.add_parser("stage", help="Show a stage's tools, expected output and checks")
+    stage.add_argument("stage", choices=STAGES)
+    plan = actions.add_parser("plan", help="Preview a profile and its dependencies")
+    plan.add_argument("profile", choices=PROFILES)
+    prompts = actions.add_parser("prompts", help="Print a Markdown note template")
+    prompts.add_argument("stage", choices=STAGES)
+    show_note = actions.add_parser("show-note", help="Read the saved stage note")
+    show_note.add_argument("stage", choices=STAGES)
+    log = actions.add_parser("log", help="Print the latest log for a check")
+    log.add_argument("check", choices=CHECKS)
+    actions.add_parser("readiness", help="List outstanding release requirements and exit 1 if any remain")
     return parser.parse_args(argv)
 
 
@@ -58,8 +76,32 @@ def run_checks(workspace, checks, cancel):
     return int(passed != len(checks))
 
 
+def describe(args):
+    if args.action in {"stages", "checks"}:
+        items = {key: stage.title for key, stage in STAGES.items()} if args.action == "stages" else CHECKS
+        for key, label in items.items():
+            print(f"{key:16} {label}")
+    elif args.action == "stage":
+        stage = STAGES[args.stage]
+        print(f"{stage.title}\n\nTools: {stage.tools}\n\n{stage.action}\n\nExpected output: {stage.output}")
+        for check in stage.checks:
+            print(f"- {check}: {CHECKS[check]}")
+    elif args.action == "plan":
+        selected = PROFILES[args.profile]
+        for number, check in enumerate(selected, 1):
+            dependencies = [item for item in DEPENDENCIES.get(check, ()) if item in selected[:number - 1]]
+            suffix = f" (after {', '.join(dependencies)})" if dependencies else ""
+            print(f"{number:2}. {check}: {CHECKS[check]}{suffix}")
+    else:
+        for heading in NOTE_TEMPLATES.get(args.stage, ("Decision", "Evidence", "Follow-up")):
+            print(f"## {heading}\n")
+
+
 def main(argv=None):
     args = parse_args(argv)
+    if args.action in {"stages", "checks", "stage", "plan", "prompts"}:
+        describe(args)
+        return 0
     cancel = Event()
     previous_handler = signal.signal(signal.SIGINT, lambda *_: cancel.set())
     try:
@@ -80,8 +122,12 @@ def main(argv=None):
             return int(not all(readiness))
         if args.action == "status":
             revision = workspace.fingerprint()
-            for key, stage in STAGES.items():
-                print(f"{workspace.status(key, revision):16} {stage.title}")
+            statuses = {key: workspace.status(key, revision) for key in STAGES}
+            if args.json:
+                print(json.dumps(statuses, indent=2))
+            else:
+                for key, status in statuses.items():
+                    print(f"{status:16} {STAGES[key].title}")
             return 0
         if args.action == "note":
             workspace.set_note(args.stage, args.source.read_text(encoding="utf-8"))
@@ -94,10 +140,36 @@ def main(argv=None):
         if args.action == "candidate":
             print(workspace.release_candidate())
             return 0
+        if args.action == "show-note":
+            print(workspace.data["notes"].get(args.stage, ""), end="")
+            return 0
+        if args.action == "log":
+            entry = workspace.data["checks"].get(args.check)
+            if not entry:
+                raise ValueError(f"No log recorded for {args.check}.")
+            path = (workspace.root / entry["log"]).resolve()
+            if not path.is_relative_to(workspace.root) or not path.is_relative_to(workspace.state.resolve()):
+                raise ValueError("Log path is outside the workspace evidence folder.")
+            print(path.read_text(encoding="utf-8"), end="")
+            return 0
+        if args.action == "readiness":
+            revision = workspace.fingerprint()
+            outstanding = workspace.release_waiting(revision)
+            if not outstanding and workspace.status("delivery", revision) != "Reviewed":
+                outstanding = ["Review the delivery stage."]
+            print("\n".join(outstanding) if outstanding else "Ready to record a local release candidate.")
+            return int(bool(outstanding))
         if args.action == "history":
-            for entry in reversed(workspace.data["history"]):
-                label = CHECKS.get(entry["check"], entry["check"])
-                print(f"{entry['when']}  {entry['status']:10}  {label}  {entry['log']}")
+            if args.limit is not None and args.limit < 0:
+                raise ValueError("History limit must be nonnegative.")
+            entries = [entry for entry in reversed(workspace.data["history"])
+                       if args.check is None or entry["check"] == args.check][:args.limit]
+            if args.json:
+                print(json.dumps(entries, indent=2))
+            else:
+                for entry in entries:
+                    label = CHECKS.get(entry["check"], entry["check"])
+                    print(f"{entry['when']}  {entry['status']:10}  {label}  {entry['log']}")
             return 0
         if args.action == "report":
             workspace.report(args.destination)
