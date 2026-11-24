@@ -30,6 +30,13 @@ def parse_args(argv=None):
     check.add_argument("checks", choices=CHECKS, nargs="+")
     report = actions.add_parser("report", help="Export a Markdown evidence report")
     report.add_argument("destination", type=Path)
+    note = actions.add_parser("note", help="Save a stage note from a Markdown or text file")
+    note.add_argument("stage", choices=STAGES)
+    note.add_argument("source", type=Path)
+    review = actions.add_parser("review", help="Mark a stage reviewed using the usual evidence checks")
+    review.add_argument("stage", choices=STAGES)
+    actions.add_parser("candidate", help="Record a local release candidate")
+    actions.add_parser("history", help="List recorded checks and their log paths")
     return parser.parse_args(argv)
 
 
@@ -75,6 +82,22 @@ def main(argv=None):
             revision = workspace.fingerprint()
             for key, stage in STAGES.items():
                 print(f"{workspace.status(key, revision):16} {stage.title}")
+            return 0
+        if args.action == "note":
+            workspace.set_note(args.stage, args.source.read_text(encoding="utf-8"))
+            print(f"Saved notes for {STAGES[args.stage].title}")
+            return 0
+        if args.action == "review":
+            workspace.review(args.stage)
+            print(f"Reviewed {STAGES[args.stage].title}")
+            return 0
+        if args.action == "candidate":
+            print(workspace.release_candidate())
+            return 0
+        if args.action == "history":
+            for entry in reversed(workspace.data["history"]):
+                label = CHECKS.get(entry["check"], entry["check"])
+                print(f"{entry['when']}  {entry['status']:10}  {label}  {entry['log']}")
             return 0
         if args.action == "report":
             workspace.report(args.destination)

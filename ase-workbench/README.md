@@ -70,3 +70,13 @@ python3 cli.py --workspace ~/ase-lab stop
 Use `run full` for the full profile and `check <name>` for an individual check. `python3 cli.py check --help` lists the check names. A check run exits with `0` when all selected checks pass, `1` when a check fails or is blocked, and `130` on cancellation. `doctor` exits with `1` when a check for the full profile reports a missing prerequisite, so quick checks can still work when Docker is unavailable.
 
 Run the workbench regression tests from this directory with `python3 -m unittest discover -s tests -v`.
+
+Use `note <stage> <file>` to save notes from a UTF-8 file and `review <stage>` to apply the same review checks as the GUI. For example:
+
+```sh
+python3 cli.py --workspace ~/ase-lab note vision ./product-vision.md
+python3 cli.py --workspace ~/ase-lab review vision
+python3 cli.py --workspace ~/ase-lab history
+```
+
+Once the delivery stage passes review, `candidate` records the local release manifest and evidence. Run `review --help` for the stage identifiers.

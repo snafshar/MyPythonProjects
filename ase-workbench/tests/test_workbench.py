@@ -142,6 +142,24 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn("0/3 checks passed", run.stdout)
         self.assertEqual(len(Workspace(self.path).data["history"]), 3)
 
+    def test_cli_notes_reviews_and_release_gate(self):
+        command = (sys.executable, str(CLI), "--workspace", str(self.path))
+        source = self.path / "notes.md"
+        source.write_text("Recorded product decision.", encoding="utf-8")
+        subprocess.run((*command, "note", "vision", str(source)), check=True, capture_output=True)
+        subprocess.run((*command, "review", "vision"), check=True, capture_output=True)
+        reopened = Workspace(self.path)
+        self.assertEqual(reopened.data["notes"]["vision"], source.read_text())
+        self.assertEqual(reopened.status("vision"), "Reviewed")
+        with patch.object(reopened, "execute", return_value="OK"):
+            reopened.run("unit")
+        history = subprocess.check_output((*command, "history"), text=True)
+        self.assertIn("Passed", history)
+        self.assertIn(reopened.data["checks"]["unit"]["log"], history)
+        candidate = subprocess.run((*command, "candidate"), capture_output=True, text=True)
+        self.assertEqual(candidate.returncode, 1)
+        self.assertIn("Review the release stage", candidate.stderr)
+
     def test_load_summary_requires_nonzero_requests(self):
         prefix = self.path / "load"
         report = self.path / "load_stats.csv"
